@@ -135,14 +135,14 @@
  <resources/>
  <connections>
   <connection>
-   <sender>buttonBox</sender>
-   <signal>accepted()</signal>
+   <sender>PushButtonOk</sender>
+   <signal>clicked()</signal>
    <receiver>Dialog</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>248</x>
-     <y>254</y>
+     <x>326</x>
+     <y>295</y>
     </hint>
     <hint type="destinationlabel">
      <x>157</x>
@@ -151,14 +151,14 @@
    </hints>
   </connection>
   <connection>
-   <sender>buttonBox</sender>
-   <signal>rejected()</signal>
+   <sender>PushButtonCancel</sender>
+   <signal>clicked()</signal>
    <receiver>Dialog</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>316</x>
-     <y>260</y>
+     <x>446</x>
+     <y>295</y>
     </hint>
     <hint type="destinationlabel">
      <x>286</x>

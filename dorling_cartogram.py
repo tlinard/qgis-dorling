@@ -172,6 +172,21 @@ class DorlingCartogram:
         # will be set False in run()
         self.first_start = True
 
+    def populate_fields(self):
+        layer_index = self.dlg.comboBoxLayer.currentIndex()
+        layers = [
+            node.layer() for node in QgsProject.instance().layerTreeRoot().children()
+            if hasattr(node, 'layer') and node.layer() is not None
+        ]
+
+        if 0 <= layer_index < len(layers):
+            selected_layer = layers[layer_index]
+            field_names = [field.name() for field in selected_layer.fields()]
+            self.dlg.comboBoxField.clear()
+            self.dlg.comboBoxField.addItems(field_names)
+
+    
+
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
@@ -183,11 +198,22 @@ class DorlingCartogram:
 
     def run(self):
         """Run method that performs all the real work"""
+
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:
             self.first_start = False
             self.dlg = DorlingCartogramDialog()
+            self.dlg.comboBoxLayer.currentIndexChanged.connect(self.populate_fields)
+
+        # Fill comboBoxLayer
+        layers = QgsProject.instance().layerTreeRoot().children()
+        self.layer_list = [node.layer() for node in layers if hasattr(node, 'layer') and node.layer()]
+        self.dlg.comboBoxLayer.clear()
+        self.dlg.comboBoxLayer.addItems([layer.name() for layer in self.layer_list])
+
+        # Initialize comboBoxField
+        self.populate_fields()
 
         # show the dialog
         self.dlg.show()
@@ -195,6 +221,9 @@ class DorlingCartogram:
         result = self.dlg.exec_()
         # See if OK was pressed
         if result:
+            selected_layer = self.layer_list[self.dlg.comboBoxLayer.currentIndex()]
+            selected_field = self.dlg.comboBoxField.currentText()
+            print(f"Layer: {selected_layer.name()}, Field: {selected_field}")
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass

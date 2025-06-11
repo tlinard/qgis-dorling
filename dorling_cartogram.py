@@ -31,6 +31,8 @@ from .resources import *
 from .dorling_cartogram_dialog import DorlingCartogramDialog
 import os.path
 
+from qgis.core import QgsProject
+
 
 class DorlingCartogram:
     """QGIS Plugin Implementation."""
@@ -170,7 +172,6 @@ class DorlingCartogram:
         # will be set False in run()
         self.first_start = True
 
-
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
@@ -182,7 +183,6 @@ class DorlingCartogram:
 
     def run(self):
         """Run method that performs all the real work"""
-
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:

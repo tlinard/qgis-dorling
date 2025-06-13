@@ -184,8 +184,16 @@ class DorlingCartogram:
     
     def populate_layers(self):
         nodes = QgsProject.instance().layerTreeRoot().children()
-        self.layer_list = [node.layer() for node in nodes if hasattr(node, 'layer') and node.layer()]
-        
+
+        self.layer_list = []
+        for node in nodes:
+            if hasattr(node, 'layer'):
+                layer = node.layer()
+                if layer and layer.type() == layer.VectorLayer:
+                    geom_type = QgsWkbTypes.geometryType(layer.wkbType())
+                    if geom_type == QgsWkbTypes.PolygonGeometry:
+                        self.layer_list.append(layer)
+
         self.dlg.comboBoxLayer.clear()
         self.dlg.comboBoxLayer.addItems([layer.name() for layer in self.layer_list])
 

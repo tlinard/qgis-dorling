@@ -31,7 +31,7 @@ from .resources import *
 from .dorling_cartogram_dialog import DorlingCartogramDialog
 import os.path
 
-from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsWkbTypes
+from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsWkbTypes, QgsVectorLayer, QgsFeature
 
 
 class DorlingCartogram:
@@ -172,6 +172,23 @@ class DorlingCartogram:
         # will be set False in run()
         self.first_start = True
 
+    def get_selected_layer_and_field(self):
+        layer_index = self.dlg.comboBoxLayer.currentIndex()
+        field_name = self.dlg.comboBoxField.currentText()
+
+        if layer_index < 0 or layer_index >= len(self.layer_list):
+            return None, None
+
+        selected_layer = self.layer_list[layer_index]
+        return selected_layer, field_name
+    
+    def populate_layers(self):
+        nodes = QgsProject.instance().layerTreeRoot().children()
+        self.layer_list = [node.layer() for node in nodes if hasattr(node, 'layer') and node.layer()]
+        
+        self.dlg.comboBoxLayer.clear()
+        self.dlg.comboBoxLayer.addItems([layer.name() for layer in self.layer_list])
+
     def populate_fields(self):
         layer_index = self.dlg.comboBoxLayer.currentIndex()
         layers = [
@@ -185,7 +202,6 @@ class DorlingCartogram:
             self.dlg.comboBoxField.clear()
             self.dlg.comboBoxField.addItems(field_names)
 
-    
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -206,13 +222,7 @@ class DorlingCartogram:
             self.dlg = DorlingCartogramDialog()
             self.dlg.comboBoxLayer.currentIndexChanged.connect(self.populate_fields)
 
-        # Fill comboBoxLayer
-        layers = QgsProject.instance().layerTreeRoot().children()
-        self.layer_list = [node.layer() for node in layers if hasattr(node, 'layer') and node.layer()]
-        self.dlg.comboBoxLayer.clear()
-        self.dlg.comboBoxLayer.addItems([layer.name() for layer in self.layer_list])
-
-        # Initialize comboBoxField
+        self.populate_layers()
         self.populate_fields()
 
         # show the dialog
@@ -221,10 +231,13 @@ class DorlingCartogram:
         result = self.dlg.exec_()
         # See if OK was pressed
         if result:
-            selected_layer = self.layer_list[self.dlg.comboBoxLayer.currentIndex()]
-            selected_field = self.dlg.comboBoxField.currentText()
-            print(f"Layer: {selected_layer.name()}, Field: {selected_field}")
-            print(get_centroids(selected_layer))
+            selected_layer, selected_field = self.get_selected_layer_and_field()
+            
+            if selected_layer and selected_field:
+                print(f"Layer: {selected_layer.name()}, Field: {selected_field}")
+                dorling_layer = create_centroid_layer(selected_layer)
+                QgsProject.instance().addMapLayer(dorling_layer)
+
 
 def get_centroids(layer):
     centroids = []
@@ -242,3 +255,22 @@ def get_centroids(layer):
             centroids.append(centroid.asPoint())
 
     return centroids
+
+def create_centroid_layer(input_layer):
+
+    crs = input_layer.crs().authid()
+    centroid_layer = QgsVectorLayer(f"Point?crs={crs}", "dorling", "memory")
+    provider = centroid_layer.dataProvider()
+
+    centroids = get_centroids(input_layer)
+    features = []
+    for centroid in centroids:
+        feat = QgsFeature()
+        feat.setGeometry(QgsGeometry.fromPointXY(centroid))
+        features.append(feat)
+
+    provider.addFeatures(features)
+
+    centroid_layer.updateExtents()
+    return centroid_layer
+    

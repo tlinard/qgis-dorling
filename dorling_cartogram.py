@@ -31,7 +31,7 @@ from .resources import *
 from .dorling_cartogram_dialog import DorlingCartogramDialog
 import os.path
 
-from qgis.core import QgsProject
+from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsWkbTypes
 
 
 class DorlingCartogram:
@@ -224,6 +224,21 @@ class DorlingCartogram:
             selected_layer = self.layer_list[self.dlg.comboBoxLayer.currentIndex()]
             selected_field = self.dlg.comboBoxField.currentText()
             print(f"Layer: {selected_layer.name()}, Field: {selected_field}")
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
+            print(get_centroids(selected_layer))
+
+def get_centroids(layer):
+    centroids = []
+
+    if not layer or not layer.isValid() or QgsWkbTypes.geometryType(layer.wkbType()) != QgsWkbTypes.PolygonGeometry:
+        print("Layer is not valid or not a polygon layer.")
+        return []
+
+    for feature in layer.getFeatures():
+        geom = feature.geometry()
+        if not geom:
+            continue
+        centroid = geom.centroid()
+        if centroid:
+            centroids.append(centroid.asPoint())
+
+    return centroids

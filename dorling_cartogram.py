@@ -21,7 +21,7 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
@@ -199,16 +199,19 @@ class DorlingCartogram:
 
     def populate_fields(self):
         layer_index = self.dlg.comboBoxLayer.currentIndex()
-        layers = [
-            node.layer() for node in QgsProject.instance().layerTreeRoot().children()
-            if hasattr(node, 'layer') and node.layer() is not None
-        ]
 
-        if 0 <= layer_index < len(layers):
-            selected_layer = layers[layer_index]
-            field_names = [field.name() for field in selected_layer.fields()]
-            self.dlg.comboBoxField.clear()
-            self.dlg.comboBoxField.addItems(field_names)
+        if layer_index < 0 or layer_index >= len(self.layer_list):
+            return
+
+        selected_layer = self.layer_list[layer_index]
+
+        numeric_field_names = []
+        for field in selected_layer.fields():
+            if field.type() in (QVariant.Int, QVariant.Double, QVariant.LongLong):
+                numeric_field_names.append(field.name())
+
+        self.dlg.comboBoxField.clear()
+        self.dlg.comboBoxField.addItems(numeric_field_names)
 
 
     def unload(self):

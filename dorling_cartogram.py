@@ -31,7 +31,7 @@ from .resources import *
 from .dorling_cartogram_dialog import DorlingCartogramDialog
 import os.path
 
-from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsWkbTypes, QgsVectorLayer, QgsFeature
+from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsWkbTypes, QgsVectorLayer, QgsFeature, QgsGraduatedSymbolRenderer, QgsRendererRange, QgsSymbol, QgsStyle
 
 
 class DorlingCartogram:
@@ -246,7 +246,7 @@ class DorlingCartogram:
             
             if selected_layer and selected_field:
                 print(f"Layer: {selected_layer.name()}, Field: {selected_field}")
-                dorling_layer = create_centroid_layer(selected_layer)
+                dorling_layer = create_dorling_layer(selected_layer, selected_field)
                 QgsProject.instance().addMapLayer(dorling_layer)
 
 
@@ -267,21 +267,63 @@ def get_centroids(layer):
 
     return centroids
 
-def create_centroid_layer(input_layer):
+def create_centroid_layer(input_layer, field_name):
 
     crs = input_layer.crs().authid()
     centroid_layer = QgsVectorLayer(f"Point?crs={crs}", "dorling", "memory")
     provider = centroid_layer.dataProvider()
 
-    centroids = get_centroids(input_layer)
+    input_field = input_layer.fields().field(field_name)
+    provider.addAttributes([input_field])
+    centroid_layer.updateFields()
+
     features = []
-    for centroid in centroids:
-        feat = QgsFeature()
-        feat.setGeometry(QgsGeometry.fromPointXY(centroid))
-        features.append(feat)
+    for feature in input_layer.getFeatures():
+        geom = feature.geometry()
+        if not geom:
+            continue
+        centroid = geom.centroid().asPoint()
+        value = feature[field_name]
+
+        new_feat = QgsFeature()
+        new_feat.setGeometry(QgsGeometry.fromPointXY(centroid))
+        new_feat.setAttributes([value])
+        features.append(new_feat)
 
     provider.addFeatures(features)
-
     centroid_layer.updateExtents()
+
     return centroid_layer
     
+def set_symbol_size(layer, field_name, min_size = 2.0, max_size = 10.0):
+    symbol = QgsSymbol.defaultSymbol(layer.geometryType())
+    symbol.setSize(min_size)
+
+    renderer = QgsGraduatedSymbolRenderer()
+    renderer.setClassAttribute(field_name)
+    renderer.setSymbol(symbol)
+    renderer.setMode(QgsGraduatedSymbolRenderer.GraduatedColor)
+    renderer.setGraduatedMethod(QgsGraduatedSymbolRenderer.Linear)
+
+    values = [feat[field_name] for feat in layer.getFeatures() if feat[field_name] is not None]
+    if not values:
+        print("Champ vide ou non numérique.")
+        return
+    min_val, max_val = min(values), max(values)
+
+    renderer.updateClasses(layer, QgsGraduatedSymbolRenderer.EqualInterval, 5)
+    for i, r in enumerate(renderer.ranges()):
+        t = (i / 4.0)
+        size = min_size + (max_size - min_size) * t
+        r.symbol().setSize(size)
+        renderer.updateRange(i, r)
+
+    layer.setRenderer(renderer)
+    layer.triggerRepaint()
+
+    return layer
+
+def create_dorling_layer(input_layer, field_name):
+    centroid_layer = create_centroid_layer(input_layer, field_name)
+    # return set_symbol_size(centroid_layer, field_name)
+    return centroid_layer

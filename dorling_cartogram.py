@@ -258,7 +258,7 @@ class DorlingCartogram:
                 neighbours_table = create_neighbours_table(selected_layer)
 
                 # scale
-                scale_factor = compute_scale_factor(centroid_layer, neighbours_table)
+                scale_factor = compute_scale_factor(centroid_layer, neighbours_table, selected_field)
 
                 # dorling_layer = create_dorling_layer(selected_layer, selected_field)
                 # QgsProject.instance().addMapLayer(dorling_layer)

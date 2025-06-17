@@ -1,3 +1,5 @@
+from math import hypot
+
 from qgis.core import (
     QgsVectorLayer,
     QgsFeature,
@@ -48,20 +50,20 @@ def create_centroid_layer(input_layer, field_name):
 
 def create_neighbours_table(layer):
     """
-    Creates a table of neighboring polygons with shared border lengths from a polygon layer.
+    Creates a table of neighbouring polygons with shared border lengths from a polygon layer.
 
     Args:
         layer (QgsVectorLayer): The input polygon layer.
 
     Returns:
-        QgsVectorLayer: A memory layer representing the relationships between neighboring regions.
+        QgsVectorLayer: A memory layer representing the relationships between neighbouring regions.
     """
     fields = QgsFields()
     fields.append(QgsField("region_id", QVariant.Int))
-    fields.append(QgsField("neighbor_id", QVariant.Int))
+    fields.append(QgsField("neighbour_id", QVariant.Int))
     fields.append(QgsField("length", QVariant.Double))
 
-    relation_layer = QgsVectorLayer("None", "region_neighbors", "memory")
+    relation_layer = QgsVectorLayer("None", "region_neighbours", "memory")
     relation_layer.dataProvider().addAttributes(fields)
     relation_layer.updateFields()
 
@@ -91,5 +93,48 @@ def create_neighbours_table(layer):
 
     return relation_layer
 
-def compute_scale_factor(centroid_layer, neighbours_table):
-    pass
+def compute_scale_factor(centroid_layer, neighbours_table, field_name):
+    """
+    Compute the scale factor for adjusting circle sizes in a Dorling cartogram.
+
+    Args:
+        centroid_layer (QgsVectorLayer): Point memory layer with coordinates and attributes.
+        neighbours_table (QgsVectorLayer): Relation layer with 'region_id' and 'neighbour_id' fields.
+        field_name (str): Numeric field name used to compute radii.
+
+    Returns:
+        float: The scale factor (scale).
+    """
+    centroid_dict = {}
+    for feat in centroid_layer.getFeatures():
+        fid = feat.id()
+        geom = feat.geometry()
+        if not geom:
+            continue
+        x, y = geom.asPoint().x(), geom.asPoint().y()
+        value = feat[value_field]
+        radius = math.sqrt(value / math.pi) # sqrt(value / pi)
+        centroid_dict[fid] = (x, y, radius)
+    
+    tot_dist = 0
+    tot_radius = 0
+
+    for relation in neighbours_table.getFeatures():
+        id1 = relation["region_id"]
+        id2 = relation["neighbour_id"]
+
+        x1, y1 = centroid_dict[id1]
+        x2, y2 = centroid_dict[id2]
+
+        dist = hypot(x2 - x1, y2 - y1)
+        radius1 = centroid_dict[id1][2]
+        radius2 = centroid_dict[id2][2]
+
+        tot_dist += dist
+        tot_radius += radius1 + radius2
+
+        if tot_radius == 0:
+            tot_radius = 1
+
+    return tot_dist / tot_radius
+        

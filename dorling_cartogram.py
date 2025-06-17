@@ -23,7 +23,7 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QMessageBox
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -248,6 +248,15 @@ class DorlingCartogram:
             
             if selected_layer and selected_field:
                 print(f"Layer: {selected_layer.name()}, Field: {selected_field}")
+
+                # check if the selected layer uses a projected CRS
+                if selected_layer.crs().isGeographic():
+                    QMessageBox.warning(
+                        self.dlg,
+                        "Invalid CRS",
+                        "The selected layer uses a geographic CRS (in degrees). Please reproject it to a projected CRS (e.g., EPSG:3857) before proceeding."
+                    )
+                    return
                 
                 # prepocessing
                 centroid_layer, neighbours_table = preprocessing(selected_layer, selected_field)

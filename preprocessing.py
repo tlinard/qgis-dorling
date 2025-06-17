@@ -7,13 +7,15 @@ from qgis.core import (
     QgsFields,
     QgsGeometry,
     QgsPointXY,
-    QgsProject
+    QgsProject,
+    edit
 )
 from PyQt5.QtCore import QVariant
 
 def create_centroid_layer(input_layer, field_name):
     """
-    Creates a new point layer containing centroids of the input polygon layer with an attribute from the original layer.
+    Creates a new point layer containing centroids of the input polygon layer 
+    with an attribute from the original layer and a computed raw radius.
 
     Args:
         input_layer (QgsVectorLayer): The input polygon layer.
@@ -22,12 +24,15 @@ def create_centroid_layer(input_layer, field_name):
     Returns:
         QgsVectorLayer: A new memory layer containing centroid points with attributes.
     """
+    import math
+    from PyQt5.QtCore import QVariant
+
     crs = input_layer.crs().authid()
     centroid_layer = QgsVectorLayer(f"Point?crs={crs}", "dorling", "memory")
     provider = centroid_layer.dataProvider()
 
     input_field = input_layer.fields().field(field_name)
-    provider.addAttributes([input_field])
+    provider.addAttributes([input_field, QgsField("radius_raw", QVariant.Double)])
     centroid_layer.updateFields()
 
     features = []
@@ -37,10 +42,11 @@ def create_centroid_layer(input_layer, field_name):
             continue
         centroid = geom.centroid().asPoint()
         value = feature[field_name]
+        radius_raw = math.sqrt(value / math.pi) if value and value > 0 else 0.0
 
         new_feat = QgsFeature(feature.id())
         new_feat.setGeometry(QgsGeometry.fromPointXY(centroid))
-        new_feat.setAttributes([value])
+        new_feat.setAttributes([value, radius_raw])
         features.append(new_feat)
 
     provider.addFeatures(features)

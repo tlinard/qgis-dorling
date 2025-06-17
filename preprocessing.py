@@ -1,3 +1,5 @@
+import math
+
 from math import hypot
 
 from qgis.core import (
@@ -30,31 +32,52 @@ def create_centroid_layer(input_layer, field_name):
     Returns:
         QgsVectorLayer: A new memory layer containing centroid points with attributes.
     """
-    import math
-    from PyQt5.QtCore import QVariant
-
+    # Get the CRS from the input layer
     crs = input_layer.crs().authid()
+
+    # Create a memory point layer with the same CRS
     centroid_layer = QgsVectorLayer(f"Point?crs={crs}", "dorling", "memory")
     provider = centroid_layer.dataProvider()
 
-    input_field = input_layer.fields().field(field_name)
-    provider.addAttributes([input_field, QgsField("radius_raw", QVariant.Double)])
+    # Copy all fields from the input layer
+    fields = input_layer.fields()
+    all_fields = fields.toList()
+
+    # Add an extra field to store the raw radius
+    all_fields.append(QgsField("radius_raw", QVariant.Double))
+
+    # Apply the full set of fields to the centroid layer
+    provider.addAttributes(all_fields)
     centroid_layer.updateFields()
 
     features = []
+
+    # Iterate through features of the input layer
     for feature in input_layer.getFeatures():
         geom = feature.geometry()
         if not geom:
             continue
+
+        # Compute the centroid of the geometry
         centroid = geom.centroid().asPoint()
+
+        # Get the value used to compute the radius
         value = feature[field_name]
+
+        # Compute raw radius = sqrt(value / π), or 0 if value is null or zero
         radius_raw = math.sqrt(value / math.pi) if value and value > 0 else 0.0
 
+        # Create new feature for the centroid
         new_feat = QgsFeature(feature.id())
         new_feat.setGeometry(QgsGeometry.fromPointXY(centroid))
-        new_feat.setAttributes([value, radius_raw])
+
+        # Combine original attributes and the new radius_raw
+        attrs = feature.attributes() + [radius_raw]
+        new_feat.setAttributes(attrs)
+
         features.append(new_feat)
 
+    # Add new features to the centroid layer
     provider.addFeatures(features)
     centroid_layer.updateExtents()
 

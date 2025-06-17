@@ -250,15 +250,8 @@ class DorlingCartogram:
                 print(f"Layer: {selected_layer.name()}, Field: {selected_field}")
                 
                 # prepocessing
-                # centroid_layer
-                centroid_layer = create_centroid_layer(selected_layer, selected_field)
+                centroid_layer, neighbours_table = preprocessing(selected_layer, selected_field)
                 QgsProject.instance().addMapLayer(centroid_layer)
-
-                # neighbours_table
-                neighbours_table = create_neighbours_table(selected_layer)
-
-                # scale
-                scale_factor = compute_scale_factor(centroid_layer, neighbours_table, selected_field)
 
                 # dorling_layer = create_dorling_layer(selected_layer, selected_field)
                 # QgsProject.instance().addMapLayer(dorling_layer)

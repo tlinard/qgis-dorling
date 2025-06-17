@@ -12,6 +12,12 @@ from qgis.core import (
 )
 from PyQt5.QtCore import QVariant
 
+def preprocessing(input_layer, field_name):
+    centroid_layer = create_centroid_layer(input_layer, field_name)
+    neighbours_table = create_neighbours_table(input_layer)
+    add_scaled_radius_field(centroid_layer, neighbours_table)
+    return centroid_layer, neighbours_table
+
 def create_centroid_layer(input_layer, field_name):
     """
     Creates a new point layer containing centroids of the input polygon layer 
@@ -99,17 +105,17 @@ def create_neighbours_table(layer):
 
     return relation_layer
 
-def compute_scale_factor(centroid_layer, neighbours_table, field_name):
+def compute_scale_factor(centroid_layer, neighbours_table, raw_radius_field="radius_raw"):
     """
     Compute the scale factor for adjusting circle sizes in a Dorling cartogram.
 
     Args:
-        centroid_layer (QgsVectorLayer): Point memory layer with coordinates and attributes.
+        centroid_layer (QgsVectorLayer): Point memory layer with coordinates and raw radius field.
         neighbours_table (QgsVectorLayer): Relation layer with 'region_id' and 'neighbour_id' fields.
-        field_name (str): Numeric field name used to compute radii.
+        raw_radius_field (str): Name of the field containing the unscaled radius (default is 'radius_raw').
 
     Returns:
-        float: The scale factor (scale).
+        float: The scale factor.
     """
     centroid_dict = {}
     for feat in centroid_layer.getFeatures():
@@ -118,29 +124,56 @@ def compute_scale_factor(centroid_layer, neighbours_table, field_name):
         if not geom:
             continue
         x, y = geom.asPoint().x(), geom.asPoint().y()
-        value = feat[value_field]
-        radius = math.sqrt(value / math.pi) # sqrt(value / pi)
+        radius = feat[raw_radius_field]
         centroid_dict[fid] = (x, y, radius)
-    
-    tot_dist = 0
-    tot_radius = 0
+
+    tot_dist = 0.0
+    tot_radius = 0.0
 
     for relation in neighbours_table.getFeatures():
         id1 = relation["region_id"]
         id2 = relation["neighbour_id"]
 
-        x1, y1 = centroid_dict[id1]
-        x2, y2 = centroid_dict[id2]
+        x1, y1, r1 = centroid_dict[id1]
+        x2, y2, r2 = centroid_dict[id2]
 
         dist = hypot(x2 - x1, y2 - y1)
-        radius1 = centroid_dict[id1][2]
-        radius2 = centroid_dict[id2][2]
-
         tot_dist += dist
-        tot_radius += radius1 + radius2
+        tot_radius += r1 + r2
 
-        if tot_radius == 0:
-            tot_radius = 1
+    if tot_radius == 0:
+        return 1.0
 
     return tot_dist / tot_radius
+
+def add_scaled_radius_field(centroid_layer, neighbours_table, raw_radius_field="radius_raw", scaled_radius_field="radius_scaled"):
+    """
+    Add a new attribute to the centroid layer containing the scaled radius.
+
+    Args:
+        centroid_layer (QgsVectorLayer): Layer with raw radii.
+        neighbours_table (QgsVectorLayer): Layer containing neighbour pairs.
+        raw_radius_field (str): Name of the field with raw radii.
+        scaled_radius_field (str): Name of the field to store scaled radii.
+    """
+    provider = centroid_layer.dataProvider()
+
+    # Add the new field if it doesn't exist yet
+    if scaled_radius_field not in [f.name() for f in centroid_layer.fields()]:
+        provider.addAttributes([QgsField(scaled_radius_field, QVariant.Double)])
+        centroid_layer.updateFields()
+
+    scaled_idx = centroid_layer.fields().indexFromName(scaled_radius_field)
+    raw_idx = centroid_layer.fields().indexFromName(raw_radius_field)
+
+    # Compute the scale factor
+    scale = compute_scale_factor(centroid_layer, neighbours_table, raw_radius_field)
+
+    # Update each feature with the scaled radius
+    centroid_layer.startEditing()
+    for feat in centroid_layer.getFeatures():
+        raw_radius = feat[raw_idx]
+        scaled_radius = raw_radius * scale
+        centroid_layer.changeAttributeValue(feat.id(), scaled_idx, scaled_radius)
+    centroid_layer.commitChanges()
         

@@ -31,7 +31,9 @@ from .resources import *
 from .dorling_cartogram_dialog import DorlingCartogramDialog
 import os.path
 
-from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsWkbTypes, QgsVectorLayer, QgsFeature, QgsGraduatedSymbolRenderer, QgsRendererRange, QgsSymbol, QgsStyle, QgsProperty, QgsRuleBasedRenderer, QgsField, QgsFields
+from qgis.core import QgsProject, QgsVectorLayer, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsPointXY, QgsWkbTypes
+
+from .preprocessing import *
 
 
 class DorlingCartogram:
@@ -246,122 +248,55 @@ class DorlingCartogram:
             
             if selected_layer and selected_field:
                 print(f"Layer: {selected_layer.name()}, Field: {selected_field}")
+                
+                # prepocessing
+                # centroid_layer
+                centroid_layer = create_centroid_layer(selected_layer, selected_field)
+                QgsProject.instance().addMapLayer(centroid_layer)
 
+                # neighbours_table
                 neighbours_table = create_neighbours_table(selected_layer)
+
+                # scale
+                scale_factor = compute_scale_factor(centroid_layer, neighbours_table)
 
                 # dorling_layer = create_dorling_layer(selected_layer, selected_field)
                 # QgsProject.instance().addMapLayer(dorling_layer)
 
 
-def get_centroids(layer):
-    centroids = []
+# def set_symbol_size(layer, field_name, min_size=2.0, max_size=10.0, num_classes=5):
+#     """
+#     Sets the symbol size of features in a vector layer based on a continuous numeric field.
 
-    if not layer or not layer.isValid() or QgsWkbTypes.geometryType(layer.wkbType()) != QgsWkbTypes.PolygonGeometry:
-        print("Layer is not valid or not a polygon layer.")
-        return []
+#     Args:
+#         layer (QgsVectorLayer): The input layer.
+#         field_name (str): The field used to determine symbol size.
+#         min_size (float): Minimum symbol size.
+#         max_size (float): Maximum symbol size.
+#         num_classes (int): Number of classes for size variation.
 
-    for feature in layer.getFeatures():
-        geom = feature.geometry()
-        if not geom:
-            continue
-        centroid = geom.centroid()
-        if centroid:
-            centroids.append(centroid.asPoint())
+#     Returns:
+#         QgsVectorLayer: The input layer with updated symbol sizes.
+#     """
+#     values = [feat[field_name] for feat in layer.getFeatures() if feat[field_name] is not None]
+#     if not values:
+#         print("Champ vide ou non numérique.")
+#         return layer
 
-    return centroids
+#     min_val, max_val = min(values), max(values)
+#     if min_val == max_val:
+#         print("Pas de variation dans les données.")
+#         return layer
 
-def create_centroid_layer(input_layer, field_name):
+#     expression = f"{min_size} + ((\"{field_name}\" - {min_val}) / ({max_val} - {min_val})) * ({max_size - min_size})"
 
-    crs = input_layer.crs().authid()
-    centroid_layer = QgsVectorLayer(f"Point?crs={crs}", "dorling", "memory")
-    provider = centroid_layer.dataProvider()
+#     symbol = QgsSymbol.defaultSymbol(layer.geometryType())
+#     symbol.setDataDefinedSize(QgsProperty.fromExpression(expression))
 
-    input_field = input_layer.fields().field(field_name)
-    provider.addAttributes([input_field])
-    centroid_layer.updateFields()
+#     root_rule = QgsRuleBasedRenderer.Rule(symbol)
+#     root_rule.setFilterExpression("")
 
-    features = []
-    for feature in input_layer.getFeatures():
-        geom = feature.geometry()
-        if not geom:
-            continue
-        centroid = geom.centroid().asPoint()
-        value = feature[field_name]
-
-        new_feat = QgsFeature(feature.id())
-        new_feat.setGeometry(QgsGeometry.fromPointXY(centroid))
-        new_feat.setAttributes([value])
-        features.append(new_feat)
-
-    provider.addFeatures(features)
-    centroid_layer.updateExtents()
-
-    return centroid_layer
-    
-def set_symbol_size(layer, field_name, min_size=2.0, max_size=10.0, num_classes=5):
-    values = [feat[field_name] for feat in layer.getFeatures() if feat[field_name] is not None]
-    if not values:
-        print("Champ vide ou non numérique.")
-        return layer
-
-    min_val, max_val = min(values), max(values)
-    if min_val == max_val:
-        print("Pas de variation dans les données.")
-        return layer
-
-    # Expression continue pour la taille du symbole
-    expression = f"{min_size} + ((\"{field_name}\" - {min_val}) / ({max_val} - {min_val})) * ({max_size - min_size})"
-
-    # Créer un symbole simple bleu
-    symbol = QgsSymbol.defaultSymbol(layer.geometryType())
-    symbol.setDataDefinedSize(QgsProperty.fromExpression(expression))
-
-    # Créer un seul rule
-    root_rule = QgsRuleBasedRenderer.Rule(symbol)
-    root_rule.setFilterExpression("")  # s'applique à tous les objets
-
-    renderer = QgsRuleBasedRenderer(root_rule)
-    layer.setRenderer(renderer)
-    layer.triggerRepaint()
-    return layer
-
-def create_dorling_layer(input_layer, field_name):
-    centroid_layer = create_centroid_layer(input_layer, field_name)
-    # return set_symbol_size(centroid_layer, field_name)
-    return centroid_layer
-
-def create_neighbours_table(layer):
-    fields = QgsFields()
-    fields.append(QgsField("region_id", QVariant.Int))
-    fields.append(QgsField("neighbor_id", QVariant.Int))
-    fields.append(QgsField("length", QVariant.Double))
-
-    relation_layer = QgsVectorLayer("None", "region_neighbors", "memory")
-    relation_layer.dataProvider().addAttributes(fields)
-    relation_layer.updateFields()
-
-    features = []
-    polygons = list(layer.getFeatures())
-
-    for i, feat1 in enumerate(polygons):
-        geom1 = feat1.geometry()
-        id1 = feat1.id()
-
-        for j in range(i + 1, len(polygons)):
-            feat2 = polygons[j]
-            geom2 = feat2.geometry()
-            id2 = feat2.id()
-
-            if geom1.touches(geom2):
-                shared_border_length = geom1.intersection(geom2).length()
-
-                new_feat = QgsFeature()
-                new_feat.setAttributes([id1, id2, shared_border_length])
-                features.append(new_feat)
-
-    relation_layer.dataProvider().addFeatures(features)
-    relation_layer.updateExtents()
-
-    QgsProject.instance().addMapLayer(relation_layer)
-
-    return relation_layer
+#     renderer = QgsRuleBasedRenderer(root_rule)
+#     layer.setRenderer(renderer)
+#     layer.triggerRepaint()
+#     return layer

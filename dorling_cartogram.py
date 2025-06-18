@@ -35,6 +35,7 @@ from qgis.core import QgsProject, QgsVectorLayer, QgsFeature, QgsField, QgsField
 
 from .preprocessing import *
 from .dorling_iterations import *
+from .symbology import *
 
 import time
 
@@ -266,9 +267,12 @@ class DorlingCartogram:
                 
                 # prepocessing
                 centroid_layer, neighbours_table = preprocessing(selected_layer, selected_field)
-                QgsProject.instance().addMapLayer(centroid_layer)
 
                 # dorling_iterations(centroid_layer, neighbours_table)
+
+                # styling
+                style_layer(centroid_layer)
+                QgsProject.instance().addMapLayer(centroid_layer)
 
                 end_time = time.time()
                 print(f"[DorlingCartogram] Total completed in {end_time - start_time:.2f} seconds")

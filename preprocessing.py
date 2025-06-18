@@ -1,4 +1,5 @@
 import math
+import time
 
 from math import hypot
 
@@ -17,9 +18,15 @@ from qgis.core import (
 from PyQt5.QtCore import QVariant
 
 def preprocessing(input_layer, field_name):
+    start_time = time.time()
+
     centroid_layer = create_centroid_layer(input_layer, field_name)
     neighbours_table = create_neighbours_table(input_layer)
     add_scaled_radius_field(centroid_layer, neighbours_table)
+
+    end_time = time.time()
+    print(f"[DorlingCartogram] Preprocessing completed in {end_time - start_time:.2f} seconds")
+
     return centroid_layer, neighbours_table
 
 def create_centroid_layer(input_layer, field_name):
@@ -143,7 +150,7 @@ def create_neighbours_table(layer):
     relation_layer.dataProvider().addFeatures(features)
     relation_layer.updateExtents()
 
-    QgsProject.instance().addMapLayer(relation_layer)
+    # QgsProject.instance().addMapLayer(relation_layer)
 
     return relation_layer
 

@@ -271,5 +271,4 @@ class DorlingCartogram:
                 # dorling_iterations(centroid_layer, neighbours_table)
 
                 end_time = time.time()
-                elapsed = end_time - start_time
-                print(f"Dorling cartogram completed in {elapsed:.2f} seconds")
+                print(f"[DorlingCartogram] Total completed in {end_time - start_time:.2f} seconds")

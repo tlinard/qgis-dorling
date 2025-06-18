@@ -103,54 +103,65 @@ def create_neighbours_table(layer):
     Returns:
         QgsVectorLayer: A memory layer representing the relationships between neighbouring regions.
     """
+    # --- Define fields for the relation layer ---
     fields = QgsFields()
-    fields.append(QgsField("region_id", QVariant.Int))
-    fields.append(QgsField("neighbour_id", QVariant.Int))
-    fields.append(QgsField("length", QVariant.Double))
+    fields.append(QgsField("region_id", QVariant.Int))         # ID of polygon 1
+    fields.append(QgsField("neighbour_id", QVariant.Int))      # ID of polygon 2 (neighbor)
+    fields.append(QgsField("length", QVariant.Double))         # Length of shared border
 
+    # --- Create the output relation layer ---
     relation_layer = QgsVectorLayer("None", "region_neighbours", "memory")
-    relation_layer.dataProvider().addAttributes(fields)
+    provider = relation_layer.dataProvider()
+    provider.addAttributes(fields)
     relation_layer.updateFields()
 
+    # --- Build spatial index and store features in memory ---
     index = QgsSpatialIndex()
+    feature_dict = {}  # Dictionary of features: { feature_id : feature }
+
+    # Insert all features into spatial index and dict
     for feat in layer.getFeatures():
         index.insertFeature(feat)
+        feature_dict[feat.id()] = feat
 
     features = []
-    polygons = list(layer.getFeatures())
-    seen_pairs = set()
+    seen_pairs = set()  # To avoid duplicate pairs (id1, id2) == (id2, id1)
 
-    for feat1 in polygons:
+    # --- Loop over each polygon ---
+    for id1, feat1 in feature_dict.items():
         geom1 = feat1.geometry()
-        id1 = feat1.id()
 
-        # Get candidate neighbors via spatial index (bounding box)
+        # Get candidate neighbors using spatial index (bounding box intersection)
         candidate_ids = index.intersects(geom1.boundingBox())
 
-        for cand_id in candidate_ids:
-            if cand_id == id1:
-                continue
+        # --- Loop over each candidate ---
+        for id2 in candidate_ids:
+            if id2 == id1:
+                continue  # Skip self
 
-            pair = tuple(sorted((id1, cand_id)))
+            # Create pair and check if already processed
+            pair = tuple(sorted((id1, id2)))
             if pair in seen_pairs:
                 continue
             seen_pairs.add(pair)
 
-            feat2 = layer.getFeature(cand_id)
+            # Fetch candidate feature and geometry
+            feat2 = feature_dict[id2]
             geom2 = feat2.geometry()
-            id2 = feat2.id()
 
+            # Check if the two polygons are true neighbors (touch)
             if geom1.touches(geom2):
+                # Compute length of shared border (intersection perimeter)
                 shared_border_length = geom1.intersection(geom2).length()
 
+                # Create relation feature
                 new_feat = QgsFeature()
                 new_feat.setAttributes([id1, id2, shared_border_length])
                 features.append(new_feat)
 
-    relation_layer.dataProvider().addFeatures(features)
+    # --- Add all relation features to the output layer ---
+    provider.addFeatures(features)
     relation_layer.updateExtents()
-
-    # QgsProject.instance().addMapLayer(relation_layer)
 
     return relation_layer
 
@@ -212,6 +223,8 @@ def compute_scale_factor(centroid_layer, neighbours_table, raw_radius_field="rad
         float: The scale factor.
     """
     centroid_dict = {}
+    
+    # --- Build dictionary of centroids: {feature_id: (x, y, radius_raw)} ---
     for feat in centroid_layer.getFeatures():
         fid = feat.id()
         geom = feat.geometry()
@@ -221,23 +234,30 @@ def compute_scale_factor(centroid_layer, neighbours_table, raw_radius_field="rad
         radius = feat[raw_radius_field]
         centroid_dict[fid] = (x, y, radius)
 
-    tot_dist = 0.0
-    tot_radius = 0.0
+    tot_dist = 0.0   # Sum of distances between centroids of neighboring pairs
+    tot_radius = 0.0 # Sum of combined radius of neighboring pairs
 
+    # --- Loop through neighbor pairs ---
     for relation in neighbours_table.getFeatures():
         id1 = relation["region_id"]
         id2 = relation["neighbour_id"]
 
+        # Retrieve centroid positions and radius
         x1, y1, r1 = centroid_dict[id1]
         x2, y2, r2 = centroid_dict[id2]
 
+        # Euclidean distance between centroids
         dist = hypot(x2 - x1, y2 - y1)
+
+        # Accumulate total distance and total combined radius
         tot_dist += dist
         tot_radius += r1 + r2
 
+    # --- Handle degenerate case ---
     if tot_radius == 0:
-        return 1.0
+        return 1.0  # Avoid division by zero; neutral scale
 
+    # --- Compute and return scale factor ---
     return tot_dist / tot_radius
 
 def add_scaled_radius_field(centroid_layer, neighbours_table, raw_radius_field="radius_raw", scaled_radius_field="radius_scaled"):
@@ -252,22 +272,27 @@ def add_scaled_radius_field(centroid_layer, neighbours_table, raw_radius_field="
     """
     provider = centroid_layer.dataProvider()
 
-    # Add the new field if it doesn't exist yet
+    # --- Add the scaled radius field if it doesn't exist yet ---
     if scaled_radius_field not in [f.name() for f in centroid_layer.fields()]:
         provider.addAttributes([QgsField(scaled_radius_field, QVariant.Double)])
         centroid_layer.updateFields()
 
+    # Get the field indexes (column positions)
     scaled_idx = centroid_layer.fields().indexFromName(scaled_radius_field)
     raw_idx = centroid_layer.fields().indexFromName(raw_radius_field)
 
-    # Compute the scale factor
+    # --- Compute the global scale factor based on neighbors ---
     scale = compute_scale_factor(centroid_layer, neighbours_table, raw_radius_field)
 
-    # Update each feature with the scaled radius
+    # --- Start editing session ---
     centroid_layer.startEditing()
+
+    # --- Update scaled radius field for each centroid ---
     for feat in centroid_layer.getFeatures():
         raw_radius = feat[raw_idx]
-        scaled_radius = raw_radius * scale
+        scaled_radius = raw_radius * scale  # Apply scale
         centroid_layer.changeAttributeValue(feat.id(), scaled_idx, scaled_radius)
+
+    # --- Commit the changes to the layer ---
     centroid_layer.commitChanges()
         

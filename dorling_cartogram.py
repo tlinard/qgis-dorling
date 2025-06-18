@@ -34,6 +34,9 @@ import os.path
 from qgis.core import QgsProject, QgsVectorLayer, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsPointXY, QgsWkbTypes
 
 from .preprocessing import *
+from .dorling_iterations import *
+
+import time
 
 
 class DorlingCartogram:
@@ -244,6 +247,9 @@ class DorlingCartogram:
         result = self.dlg.exec_()
         # See if OK was pressed
         if result:
+
+            start_time = time.time()
+
             selected_layer, selected_field = self.get_selected_layer_and_field()
             
             if selected_layer and selected_field:
@@ -262,43 +268,8 @@ class DorlingCartogram:
                 centroid_layer, neighbours_table = preprocessing(selected_layer, selected_field)
                 QgsProject.instance().addMapLayer(centroid_layer)
 
-                # dorling_layer = create_dorling_layer(selected_layer, selected_field)
-                # QgsProject.instance().addMapLayer(dorling_layer)
+                # dorling_iterations(centroid_layer, neighbours_table)
 
-
-# def set_symbol_size(layer, field_name, min_size=2.0, max_size=10.0, num_classes=5):
-#     """
-#     Sets the symbol size of features in a vector layer based on a continuous numeric field.
-
-#     Args:
-#         layer (QgsVectorLayer): The input layer.
-#         field_name (str): The field used to determine symbol size.
-#         min_size (float): Minimum symbol size.
-#         max_size (float): Maximum symbol size.
-#         num_classes (int): Number of classes for size variation.
-
-#     Returns:
-#         QgsVectorLayer: The input layer with updated symbol sizes.
-#     """
-#     values = [feat[field_name] for feat in layer.getFeatures() if feat[field_name] is not None]
-#     if not values:
-#         print("Champ vide ou non numérique.")
-#         return layer
-
-#     min_val, max_val = min(values), max(values)
-#     if min_val == max_val:
-#         print("Pas de variation dans les données.")
-#         return layer
-
-#     expression = f"{min_size} + ((\"{field_name}\" - {min_val}) / ({max_val} - {min_val})) * ({max_size - min_size})"
-
-#     symbol = QgsSymbol.defaultSymbol(layer.geometryType())
-#     symbol.setDataDefinedSize(QgsProperty.fromExpression(expression))
-
-#     root_rule = QgsRuleBasedRenderer.Rule(symbol)
-#     root_rule.setFilterExpression("")
-
-#     renderer = QgsRuleBasedRenderer(root_rule)
-#     layer.setRenderer(renderer)
-#     layer.triggerRepaint()
-#     return layer
+                end_time = time.time()
+                elapsed = end_time - start_time
+                print(f"Dorling cartogram completed in {elapsed:.2f} seconds")

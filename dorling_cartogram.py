@@ -272,13 +272,14 @@ class DorlingCartogram:
                     )
                     return
                 
-                # prepocessing
+                # Prepocessing
                 centroid_layer, neighbours_table = preprocessing(selected_layer, selected_field)
                 QgsProject.instance().addMapLayer(centroid_layer)
 
-                # dorling_iterations(centroid_layer, neighbours_table)
+                # Compute Dorling
+                compute_dorling(centroid_layer, neighbours_table, friction, ratio)
 
-                # styling
+                # Styling
                 style_layer(centroid_layer)
 
                 end_time = time.time()

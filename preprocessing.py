@@ -10,6 +10,8 @@ from qgis.core import (
     QgsGeometry,
     QgsPointXY,
     QgsProject,
+    QgsSpatialIndex,
+    QgsFeatureRequest,
     edit
 )
 from PyQt5.QtCore import QVariant
@@ -86,6 +88,7 @@ def create_centroid_layer(input_layer, field_name):
 def create_neighbours_table(layer):
     """
     Creates a table of neighbouring polygons with shared border lengths from a polygon layer.
+    Uses a spatial index to optimize performance.
 
     Args:
         layer (QgsVectorLayer): The input polygon layer.
@@ -102,15 +105,31 @@ def create_neighbours_table(layer):
     relation_layer.dataProvider().addAttributes(fields)
     relation_layer.updateFields()
 
+    index = QgsSpatialIndex()
+    for feat in layer.getFeatures():
+        index.insertFeature(feat)
+
     features = []
     polygons = list(layer.getFeatures())
+    seen_pairs = set()
 
-    for i, feat1 in enumerate(polygons):
+    for feat1 in polygons:
         geom1 = feat1.geometry()
         id1 = feat1.id()
 
-        for j in range(i + 1, len(polygons)):
-            feat2 = polygons[j]
+        # Get candidate neighbors via spatial index (bounding box)
+        candidate_ids = index.intersects(geom1.boundingBox())
+
+        for cand_id in candidate_ids:
+            if cand_id == id1:
+                continue
+
+            pair = tuple(sorted((id1, cand_id)))
+            if pair in seen_pairs:
+                continue
+            seen_pairs.add(pair)
+
+            feat2 = layer.getFeature(cand_id)
             geom2 = feat2.geometry()
             id2 = feat2.id()
 
@@ -124,9 +143,54 @@ def create_neighbours_table(layer):
     relation_layer.dataProvider().addFeatures(features)
     relation_layer.updateExtents()
 
-    # QgsProject.instance().addMapLayer(relation_layer)
+    QgsProject.instance().addMapLayer(relation_layer)
 
     return relation_layer
+
+# def create_neighbours_table(layer):
+#     """
+#     Creates a table of neighbouring polygons with shared border lengths from a polygon layer.
+
+#     Args:
+#         layer (QgsVectorLayer): The input polygon layer.
+
+#     Returns:
+#         QgsVectorLayer: A memory layer representing the relationships between neighbouring regions.
+#     """
+#     fields = QgsFields()
+#     fields.append(QgsField("region_id", QVariant.Int))
+#     fields.append(QgsField("neighbour_id", QVariant.Int))
+#     fields.append(QgsField("length", QVariant.Double))
+
+#     relation_layer = QgsVectorLayer("None", "region_neighbours", "memory")
+#     relation_layer.dataProvider().addAttributes(fields)
+#     relation_layer.updateFields()
+
+#     features = []
+#     polygons = list(layer.getFeatures())
+
+#     for i, feat1 in enumerate(polygons):
+#         geom1 = feat1.geometry()
+#         id1 = feat1.id()
+
+#         for j in range(i + 1, len(polygons)):
+#             feat2 = polygons[j]
+#             geom2 = feat2.geometry()
+#             id2 = feat2.id()
+
+#             if geom1.touches(geom2):
+#                 shared_border_length = geom1.intersection(geom2).length()
+
+#                 new_feat = QgsFeature()
+#                 new_feat.setAttributes([id1, id2, shared_border_length])
+#                 features.append(new_feat)
+
+#     relation_layer.dataProvider().addFeatures(features)
+#     relation_layer.updateExtents()
+
+#     # QgsProject.instance().addMapLayer(relation_layer)
+
+#     return relation_layer
 
 def compute_scale_factor(centroid_layer, neighbours_table, raw_radius_field="radius_raw"):
     """

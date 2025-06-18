@@ -242,6 +242,10 @@ class DorlingCartogram:
         self.populate_layers()
         self.populate_fields()
 
+        # Set default values for friction and ratio
+        self.dlg.doubleSpinBoxFriction.setValue(0.25)
+        self.dlg.doubleSpinBoxRatio.setValue(0.6)
+
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
@@ -252,9 +256,12 @@ class DorlingCartogram:
             start_time = time.time()
 
             selected_layer, selected_field = self.get_selected_layer_and_field()
+
+            friction = self.dlg.doubleSpinBoxFriction.value()
+            ratio = self.dlg.doubleSpinBoxRatio.value()
             
             if selected_layer and selected_field:
-                print(f"Layer: {selected_layer.name()}, Field: {selected_field}")
+                print(f"Layer: {selected_layer.name()}, Field: {selected_field}", f"Friction: {friction}, Ratio: {ratio}")
 
                 # check if the selected layer uses a projected CRS
                 if selected_layer.crs().isGeographic():
@@ -267,12 +274,12 @@ class DorlingCartogram:
                 
                 # prepocessing
                 centroid_layer, neighbours_table = preprocessing(selected_layer, selected_field)
+                QgsProject.instance().addMapLayer(centroid_layer)
 
                 # dorling_iterations(centroid_layer, neighbours_table)
 
                 # styling
                 style_layer(centroid_layer)
-                QgsProject.instance().addMapLayer(centroid_layer)
 
                 end_time = time.time()
                 print(f"[DorlingCartogram] Total completed in {end_time - start_time:.2f} seconds")

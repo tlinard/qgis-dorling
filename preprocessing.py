@@ -7,52 +7,40 @@ from qgis.core import (
 
 def preprocessing(input_layer, field_name):
     """
-    Full preprocessing pipeline: generates centroid_dict and neighbours_list.
+    Full preprocessing pipeline: compute centroids and neighbours.
+
+    Args:
+        input_layer (QgsVectorLayer): Input polygon layer.
+        field_name (str): Field used to compute raw radius.
+
+    Returns:
+        tuple: (centroid_dict, neighbours_list)
+
+        - centroid_dict (dict): 
+            { fid: { 'x': x, 'y': y, 'radius_raw': r_raw, 'radius_scaled': r_scaled, 'xvec': xvec, 'yvec': yvec } }
+        - neighbours_list (list): 
+            [ (region_id, neighbour_id, shared_border_length), ... ]
     """
     start_time = time.time()
 
-    centroid_dict = create_centroid_dict(input_layer, field_name)
     neighbours_list = create_neighbours_list(input_layer)
-    add_scaled_radius(centroid_dict, neighbours_list)
+
+    centroid_dict = create_centroid_dict(input_layer, field_name, neighbours_list)
 
     end_time = time.time()
     print(f"[DorlingCartogram] Preprocessing completed in {end_time - start_time:.2f} seconds")
 
     return centroid_dict, neighbours_list
 
-def create_centroid_dict(input_layer, field_name):
-    """
-    Creates a dictionary of centroids:
-    { fid: { 'x': x, 'y': y, 'radius_raw': r_raw, 'radius_scaled': 0.0, 'xvec': 0.0, 'yvec': 0.0 } }
-    """
-    centroid_dict = {}
-
-    for feat in input_layer.getFeatures():
-        fid = int(feat.id())
-        geom = feat.geometry()
-        if not geom:
-            continue
-
-        centroid = geom.centroid().asPoint()
-        x, y = centroid.x(), centroid.y()
-        value = feat[field_name]
-        radius_raw = math.sqrt(value / math.pi) if value and value > 0 else 0.0
-
-        centroid_dict[fid] = {
-            'x': x,
-            'y': y,
-            'radius_raw': radius_raw,
-            'radius_scaled': 0.0,
-            'xvec': 0.0,
-            'yvec': 0.0
-        }
-
-    return centroid_dict
-
 def create_neighbours_list(layer):
     """
-    Creates a list of neighbouring polygon pairs:
-    [ (region_id, neighbour_id, shared_border_length), ... ]
+    Build a list of neighbouring polygon pairs.
+
+    Args:
+        layer (QgsVectorLayer): Input polygon layer.
+
+    Returns:
+        list: [ (region_id, neighbour_id, shared_border_length), ... ]
     """
     index = QgsSpatialIndex()
     feature_dict = {}
@@ -89,11 +77,58 @@ def create_neighbours_list(layer):
 
     return neighbours_list
 
+def create_centroid_dict(input_layer, field_name, neighbours_list):
+    """
+    Compute centroids and initialize attributes.
+
+    Args:
+        input_layer (QgsVectorLayer): Input polygon layer.
+        field_name (str): Field used to compute raw radius.
+        neighbours_list (list): Neighbour pairs (used to compute scale).
+
+    Returns:
+        dict: 
+            { fid: { 'x': x, 'y': y, 'radius_raw': r_raw, 'radius_scaled': r_scaled, 'xvec': xvec, 'yvec': yvec } }
+    """
+    centroid_dict = {}
+
+    for feat in input_layer.getFeatures():
+        fid = int(feat.id())
+        geom = feat.geometry()
+        if not geom:
+            continue
+
+        centroid = geom.centroid().asPoint()
+        x, y = centroid.x(), centroid.y()
+        value = feat[field_name]
+        radius_raw = math.sqrt(value / math.pi) if value and value > 0 else 0.0
+
+        centroid_dict[fid] = {
+            'x': x,
+            'y': y,
+            'radius_raw': radius_raw,
+            'radius_scaled': 0.0,
+            'xvec': 0.0,
+            'yvec': 0.0
+        }
+
+    # Add scaled radius
+    scale = compute_scale_factor(centroid_dict, neighbours_list)
+    for fid, props in centroid_dict.items():
+        props['radius_scaled'] = props['radius_raw'] * scale
+
+    return centroid_dict
+
 def compute_scale_factor(centroid_dict, neighbours_list):
     """
-    Compute scale factor (same logic as Geopandas version):
-    - iterate over unique neighbor pairs
-    - accumulate tdist / tradius
+    Compute scale factor for radius scaling.
+
+    Args:
+        centroid_dict (dict): Centroid dictionary.
+        neighbours_list (list): Neighbour pairs.
+
+    Returns:
+        float: scale factor.
     """
     tdist = 0.0
     tradius = 0.0
@@ -115,15 +150,3 @@ def compute_scale_factor(centroid_dict, neighbours_list):
         return 1.0
 
     return tdist / tradius
-
-def add_scaled_radius(centroid_dict, neighbours_list):
-    """
-    Compute scaled radius and update centroid_dict in-place.
-    """
-    scale = compute_scale_factor(centroid_dict, neighbours_list)
-    print(f"[DorlingCartogram] Scale factor = {scale:.6f}")
-
-    for fid, props in centroid_dict.items():
-        props['radius_scaled'] = props['radius_raw'] * scale
-
-    return centroid_dict

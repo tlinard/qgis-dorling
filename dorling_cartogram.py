@@ -273,13 +273,13 @@ class DorlingCartogram:
                     return
                 
                 # Prepocessing
-                centroid_table, neighbours_table = preprocessing(selected_layer, selected_field)
+                centroid_dict, neighbours_list = preprocessing(selected_layer, selected_field)
 
                 # Compute Dorling
                 # compute_dorling(centroid_layer, neighbours_table, friction, ratio)
 
                 # Build layer
-                dorling_layer = create_point_layer(selected_layer, centroid_table)
+                dorling_layer = create_point_layer(selected_layer, centroid_dict)
                 style_layer(dorling_layer)
                 QgsProject.instance().addMapLayer(dorling_layer)
 

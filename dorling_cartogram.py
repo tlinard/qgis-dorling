@@ -273,7 +273,7 @@ class DorlingCartogram:
                     return
                 
                 # Prepocessing
-                centroid_dict, neighbours_list = preprocessing(selected_layer, selected_field)
+                centroid_dict, neighbours_list, spatial_index = preprocessing(selected_layer, selected_field)
 
                 # Compute Dorling
                 # compute_dorling(centroid_layer, neighbours_table, friction, ratio)

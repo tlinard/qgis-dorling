@@ -7,10 +7,11 @@
     - Forces are combined and smoothed using a friction factor.
     - Positions (x, y) are updated accordingly.
 """
-
 import time
 
-def compute_dorling(centroid_dict, neighbours_table, friction = 0.25, ratio = 0.4):
+from qgis.core import QgsSpatialIndex, QgsRectangle, QgsFeature, QgsGeometry, QgsPointXY
+
+def compute_dorling(centroid_dict, neighbours_table, spatial_index ,friction = 0.25, ratio = 0.4):
 
     start_time = time.time()
     
@@ -21,5 +22,18 @@ def compute_dorling(centroid_dict, neighbours_table, friction = 0.25, ratio = 0.
     print(f"[DorlingCartogram] Dorling iterations completed in {end_time - start_time:.2f} seconds")
     return
 
-def dorling_iterations(centroid_dict, neighbours_table, friction = 0.25, ratio = 0.4):
+def dorling_iterations(centroid_dict, neighbours_table, spatial_index, friction = 0.25, ratio = 0.4):
+
+    # Iterate over each centroid
+    for id1, props2 in centroid_dict.items():
+        x1, y1 = props1['x'], props1['y']
+        r1 = props1['radius_scaled']
+
+        xrepel, yrepel = 0.0, 0.0
+        xattract, yattract = 0.0, 0.0
+        
+        # Find possible overlapping circles
+        search_rect = QgsRectangle(x1 - r1)
+       
+
     return

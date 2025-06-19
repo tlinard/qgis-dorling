@@ -2,7 +2,7 @@ import math
 import time
 from math import hypot
 from qgis.core import (
-    QgsVectorLayer, QgsFeature, QgsSpatialIndex
+    QgsVectorLayer, QgsFeature, QgsSpatialIndex, QgsGeometry, QgsPointXY
 )
 
 def preprocessing(input_layer, field_name):
@@ -27,10 +27,12 @@ def preprocessing(input_layer, field_name):
 
     centroid_dict = create_centroid_dict(input_layer, field_name, neighbours_list)
 
+    spatial_index = create_spatial_index(centroid_dict)
+
     end_time = time.time()
     print(f"[DorlingCartogram] Preprocessing completed in {end_time - start_time:.2f} seconds")
 
-    return centroid_dict, neighbours_list
+    return centroid_dict, neighbours_list, spatial_index
 
 def create_neighbours_list(layer):
     """
@@ -150,3 +152,25 @@ def compute_scale_factor(centroid_dict, neighbours_list):
         return 1.0
 
     return tdist / tradius
+
+def create_spatial_index(centroid_dict):
+    """
+    Creates a spatial index from centroid_dict points.
+
+    Args :
+        centroid_dict (dict): 
+            { fid: { 'x': x, 'y': y, 'radius_raw': r_raw, 'radius_scaled': r_scaled, 'xvec': xvec, 'yvec': yvec } }
+
+    Returns:
+        QgsSpatialIndex
+    """
+    index = QgsSpatialIndex()
+
+    for fid, props in centroid_dict.items():
+        point_geom = QgsGeometry.fromPointXY(QgsPointXY(props['x'], props['y']))
+        feature = QgsFeature()
+        feature.setGeometry(point_geom)
+        feature.setId(fid)
+        index.insertFeature(feature)
+
+    return index

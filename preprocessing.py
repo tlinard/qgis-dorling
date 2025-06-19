@@ -17,7 +17,7 @@ def preprocessing(input_layer, field_name):
         tuple: (centroid_dict, neighbours_dict, spatial_index)
 
         - centroid_dict (dict): 
-            { fid: { 'x': x, 'y': y, 'radius_raw': r_raw, 'radius_scaled': r_scaled, 'xvec': xvec, 'yvec': yvec } }
+            { fid: { 'x': x, 'y': y, 'perimeter': perimeter, 'radius_raw': r_raw, 'radius_scaled': r_scaled, 'xvec': xvec, 'yvec': yvec } }
         - neighbours_dict (dict): 
             { region_id: { neighbour_id: shared_border_length, ... }, ... }
     """
@@ -92,7 +92,7 @@ def create_centroid_dict(input_layer, field_name, neighbours_dict):
 
     Returns:
         dict: 
-            { fid: { 'x': x, 'y': y, 'radius_raw': r_raw, 'radius_scaled': r_scaled, 'xvec': xvec, 'yvec': yvec } }
+            { fid: { 'x': x, 'y': y, 'perimeter': perimeter,'radius_raw': r_raw, 'radius_scaled': r_scaled, 'xvec': xvec, 'yvec': yvec } }
     """
     centroid_dict = {}
 
@@ -104,12 +104,14 @@ def create_centroid_dict(input_layer, field_name, neighbours_dict):
 
         centroid = geom.centroid().asPoint()
         x, y = centroid.x(), centroid.y()
+        perimeter = geom.length()
         value = feat[field_name]
         radius_raw = math.sqrt(value / math.pi) if value and value > 0 else 0.0
 
         centroid_dict[fid] = {
             'x': x,
             'y': y,
+            'perimeter': perimeter,
             'radius_raw': radius_raw,
             'radius_scaled': 0.0,
             'xvec': 0.0,
@@ -163,7 +165,7 @@ def create_spatial_index(centroid_dict):
 
     Args :
         centroid_dict (dict): 
-            { fid: { 'x': x, 'y': y, 'radius_raw': r_raw, 'radius_scaled': r_scaled, 'xvec': xvec, 'yvec': yvec } }
+            { fid: { 'x': x, 'y': y, 'perimeter': perimeter, 'radius_raw': r_raw, 'radius_scaled': r_scaled, 'xvec': xvec, 'yvec': yvec } }
 
     Returns:
         QgsSpatialIndex

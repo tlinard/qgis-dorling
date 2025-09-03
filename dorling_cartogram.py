@@ -244,7 +244,7 @@ class DorlingCartogram:
 
         # Set default values for friction and ratio
         self.dlg.doubleSpinBoxFriction.setValue(0.25)
-        self.dlg.doubleSpinBoxRatio.setValue(0.6)
+        self.dlg.doubleSpinBoxRatio.setValue(0.4)
 
         # show the dialog
         self.dlg.show()

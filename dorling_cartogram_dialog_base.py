@@ -60,7 +60,7 @@ class Ui_Dialog(object):
         self.doubleSpinBoxRatio.setGeometry(QtCore.QRect(180, 160, 62, 22))
         self.doubleSpinBoxRatio.setMaximum(1.0)
         self.doubleSpinBoxRatio.setSingleStep(0.01)
-        self.doubleSpinBoxRatio.setProperty("value", 0.6)
+        self.doubleSpinBoxRatio.setProperty("value", 0.4)
         self.doubleSpinBoxRatio.setObjectName("doubleSpinBoxRatio")
 
         self.retranslateUi(Dialog)

@@ -20,14 +20,14 @@ def compute_dorling(centroid_dict, neighbours_dict, spatial_index ,friction = 0.
 
     rmax = max(props['radius_scaled'] for props in centroid_dict.values())
     
-    for i in range (100):
-        dorling_iterations(centroid_dict, neighbours_dict, spatial_index, rmax, friction, ratio)
+    for i in range (200):
+        dorling_iteration(centroid_dict, neighbours_dict, spatial_index, rmax, friction, ratio)
 
     end_time = time.time()
     print(f"[DorlingCartogram] Dorling iterations completed in {end_time - start_time:.2f} seconds")
     return
 
-def dorling_iterations(centroid_dict, neighbours_dict, spatial_index, rmax, friction = 0.25, ratio = 0.4):
+def dorling_iteration(centroid_dict, neighbours_dict, spatial_index, rmax, friction = 0.25, ratio = 0.4):
     """
     One iteration of the Dorling algorithm.
 
@@ -114,8 +114,10 @@ def dorling_iterations(centroid_dict, neighbours_dict, spatial_index, rmax, fric
         ytotal = (1.0 - ratio) * yrepel + ratio * yattract
 
         # --- Apply friction and update motion vectors ---
-        props1['xvec'] = friction * (props1['xvec'] + xtotal)
-        props1['yvec'] = friction * (props1['yvec'] + ytotal)
+        # props1['xvec'] = friction * (props1['xvec'] + xtotal)
+        # props1['yvec'] = friction * (props1['yvec'] + ytotal)
+        props1['xvec'] = xtotal
+        props1['yvec'] = ytotal
 
     # --- Update positions ---
     for id, props in centroid_dict.items():
@@ -148,86 +150,3 @@ def circles_overlap(x1, y1, r1, x2, y2, r2):
     dist = math.hypot(x2 - x1, y2 - y1)
     overlap = r1 + r2 - dist
     return dist, overlap
-
-# def dorling_iterations(centroid_dict, neighbours_dict, spatial_index, rmax, friction = 0.25, ratio = 0.4):
-#     # Iterate over each centroid
-#     for id1, props1 in centroid_dict.items():
-#         x1, y1 = props1['x'], props1['y']
-#         perimeter1 = props1['perimeter']
-#         r1 = props1['radius_scaled']
-
-#         xrepel, yrepel = 0.0, 0.0
-#         xattract, yattract = 0.0, 0.0
-#         closest = float('inf')
-        
-#         # Find possible overlapping circles
-#         search_rect = QgsRectangle(x1 - r1 - rmax, y1 - r1 - rmax, x1 + r1 + rmax, y1 + r1 + rmax)
-#         nearby_ids = spatial_index.intersects(search_rect)
-
-#         # Iterate over potentially overlapping circles  
-#         for id2 in nearby_ids:
-#             if id1 == id2:
-#                 continue # ignore self
-
-#             props2 = centroid_dict[id2]
-#             x2, y2 = props2['x'], props2['y']
-#             r2 = props2['radius_scaled']
-
-#             dist = math.hypot(x2 - x1, y2 - y1)
-#             repulsion = r1 + r2 - dist
-
-#             if dist < closest:
-#                 closest = dist
-
-#             if repulsion > 0.0 and dist > 1e-6:
-#                 fx = repulsion * (x2 - x1) / dist
-#                 fy = repulsion * (y2 - y1) / dist
-#                 xrepel -= fx
-#                 yrepel -= fy
-
-#         # Iterate over neigbours
-#         if id1 in neighbours_dict:
-#             for id2, border_length in neighbours_dict[id1].items():
-#                 if id1 == id2:
-#                     continue # ignore self
-
-#                 props2 = centroid_dict[id2]
-#                 x2, y2 = props2['x'], props2['y']
-#                 r2 = props2['radius_scaled']
-
-#                 dist = math.hypot(x2 - x1, y2 - y1)
-#                 attraction = dist - (r1 + r2)
-
-#                 if attraction > 0.0 and dist > 1e-6:
-#                     fx = attraction * (x2 - x1) / dist
-#                     fy = attraction * (y2 - y1) / dist
-#                     xattract += fx * border_length / perimeter1
-#                     yattract += fy * border_length / perimeter1
-        
-#         # --- Combine forces ---
-#         repdst = math.hypot(xrepel, yrepel)
-#         atrdst = math.hypot(xattract, yattract)
-
-#         if repdst > closest:
-#             scale = closest / (repdst + 1e-6)
-#             xrepel *= scale
-#             yrepel *= scale
-#             repdst = closest
-
-#         if repdst > 0.0:
-#             xtotal = (1.0 - ratio) * xrepel + ratio * (repdst * xattract / (atrdst + 1.0))
-#             ytotal = (1.0 - ratio) * yrepel + ratio * (repdst * yattract / (atrdst + 1.0))
-#         else:
-#             xtotal = xattract
-#             ytotal = yattract
-
-#         # --- Apply friction and update motion vectors ---
-#         props1['xvec'] = friction * (props1['xvec'] + xtotal)
-#         props1['yvec'] = friction * (props1['yvec'] + ytotal)
-
-#     # Update centroid position
-#     for id, props in centroid_dict.items():
-#         props['x'] += props['xvec']
-#         props['y'] += props['yvec']
-
-#     return

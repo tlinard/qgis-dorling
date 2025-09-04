@@ -14,13 +14,14 @@ from math import hypot
 
 from qgis.core import QgsSpatialIndex, QgsRectangle, QgsFeature, QgsGeometry, QgsPointXY
 
-def compute_dorling(centroid_dict, neighbours_dict, spatial_index ,friction = 0.25, ratio = 0.4):
+def compute_dorling(centroid_dict, neighbours_dict,friction = 0.25, ratio = 0.4):
 
     start_time = time.time()
 
     rmax = max(props['radius_scaled'] for props in centroid_dict.values())
     
-    for i in range (200):
+    for i in range (100):
+        spatial_index = create_spatial_index(centroid_dict)
         dorling_iteration(centroid_dict, neighbours_dict, spatial_index, rmax, friction, ratio)
 
     end_time = time.time()
@@ -114,10 +115,10 @@ def dorling_iteration(centroid_dict, neighbours_dict, spatial_index, rmax, frict
         ytotal = (1.0 - ratio) * yrepel + ratio * yattract
 
         # --- Apply friction and update motion vectors ---
-        # props1['xvec'] = friction * (props1['xvec'] + xtotal)
-        # props1['yvec'] = friction * (props1['yvec'] + ytotal)
-        props1['xvec'] = xtotal
-        props1['yvec'] = ytotal
+        props1['xvec'] = friction * (props1['xvec'] + xtotal)
+        props1['yvec'] = friction * (props1['yvec'] + ytotal)
+        # props1['xvec'] = xtotal
+        # props1['yvec'] = ytotal
 
     # --- Update positions ---
     for id, props in centroid_dict.items():
@@ -150,3 +151,25 @@ def circles_overlap(x1, y1, r1, x2, y2, r2):
     dist = math.hypot(x2 - x1, y2 - y1)
     overlap = r1 + r2 - dist
     return dist, overlap
+
+def create_spatial_index(centroid_dict):
+    """
+    Creates a spatial index from centroid_dict points.
+
+    Args :
+        centroid_dict (dict): 
+            { fid: { 'x': x, 'y': y, 'perimeter': perimeter, 'radius_raw': r_raw, 'radius_scaled': r_scaled, 'xvec': xvec, 'yvec': yvec } }
+
+    Returns:
+        QgsSpatialIndex
+    """
+    index = QgsSpatialIndex()
+
+    for fid, props in centroid_dict.items():
+        point_geom = QgsGeometry.fromPointXY(QgsPointXY(props['x'], props['y']))
+        feature = QgsFeature()
+        feature.setGeometry(point_geom)
+        feature.setId(fid)
+        index.insertFeature(feature)
+
+    return index

@@ -14,7 +14,7 @@ def preprocessing(input_layer, field_name):
         field_name (str): Field used to compute raw radius.
 
     Returns:
-        tuple: (centroid_dict, neighbours_dict, spatial_index)
+        tuple: (centroid_dict, neighbours_dict)
 
         - centroid_dict (dict): 
             { fid: { 'x': x, 'y': y, 'perimeter': perimeter, 'radius_raw': r_raw, 'radius_scaled': r_scaled, 'xvec': xvec, 'yvec': yvec } }
@@ -27,12 +27,12 @@ def preprocessing(input_layer, field_name):
 
     centroid_dict = create_centroid_dict(input_layer, field_name, neighbours_dict)
 
-    spatial_index = create_spatial_index(centroid_dict)
+    # spatial_index = create_spatial_index(centroid_dict)
 
     end_time = time.time()
     print(f"[DorlingCartogram] Preprocessing completed in {end_time - start_time:.2f} seconds")
 
-    return centroid_dict, neighbours_dict, spatial_index
+    return centroid_dict, neighbours_dict
 
 def create_neighbours_dict(layer):
     """
@@ -159,25 +159,3 @@ def compute_scale_factor(centroid_dict, neighbours_dict):
         return 1.0
 
     return tdist / tradius
-
-def create_spatial_index(centroid_dict):
-    """
-    Creates a spatial index from centroid_dict points.
-
-    Args :
-        centroid_dict (dict): 
-            { fid: { 'x': x, 'y': y, 'perimeter': perimeter, 'radius_raw': r_raw, 'radius_scaled': r_scaled, 'xvec': xvec, 'yvec': yvec } }
-
-    Returns:
-        QgsSpatialIndex
-    """
-    index = QgsSpatialIndex()
-
-    for fid, props in centroid_dict.items():
-        point_geom = QgsGeometry.fromPointXY(QgsPointXY(props['x'], props['y']))
-        feature = QgsFeature()
-        feature.setGeometry(point_geom)
-        feature.setId(fid)
-        index.insertFeature(feature)
-
-    return index

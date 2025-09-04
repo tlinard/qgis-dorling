@@ -42,6 +42,7 @@ def create_neighbours_dict(layer):
         ...
     }
     """
+    # Build spatial index for polygon geometries
     index = QgsSpatialIndex()
     feature_dict = {}
 

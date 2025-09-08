@@ -27,8 +27,6 @@ def preprocessing(input_layer, field_name):
 
     centroid_dict = create_centroid_dict(input_layer, field_name, neighbours_dict)
 
-    # spatial_index = create_spatial_index(centroid_dict)
-
     end_time = time.time()
     print(f"[DorlingCartogram] Preprocessing completed in {end_time - start_time:.2f} seconds")
 

@@ -77,5 +77,5 @@ class Ui_Dialog(object):
         self.label_2.setText(_translate("Dialog", "Field"))
         self.label_3.setText(_translate("Dialog", "Output Layer"))
         self.label_4.setText(_translate("Dialog", "Friction"))
-        self.label_5.setText(_translate("Dialog", "Ratio (Repulsion %)"))
+        self.label_5.setText(_translate("Dialog", "Ratio (Attraction %)"))
 from qgsfilewidget import QgsFileWidget

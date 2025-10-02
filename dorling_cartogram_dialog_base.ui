@@ -147,7 +147,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>Ratio (Repulsion %)</string>
+    <string>Ratio (Attraction %)</string>
    </property>
   </widget>
   <widget class="QDoubleSpinBox" name="doubleSpinBoxFriction">

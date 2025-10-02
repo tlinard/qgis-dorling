@@ -43,7 +43,7 @@ def dorling_iteration(centroid_dict, neighbours_dict, spatial_index, rmax, frict
         spatial_index (QgsSpatialIndex): spatial index of current centroids
         rmax (float): max radius (scaled), used for search window
         friction (float): damping factor
-        ratio (float): balance between repulsion / attraction
+        ratio (float): balance between repulsion and attraction (attraction %)
     """
 
     # Initialize cumulative displacement to monitor convergence
@@ -63,7 +63,7 @@ def dorling_iteration(centroid_dict, neighbours_dict, spatial_index, rmax, frict
         # Track the closest neighbor distance for force limiting
         closest = float('inf')
         
-        # Define a bounding box to search for potentially overlapping neighbors
+        # Define a bounding box to search and retrieve potentially overlapping circles
         search_rect = QgsRectangle(x1 - r1 - rmax, y1 - r1 - rmax, x1 + r1 + rmax, y1 + r1 + rmax)
         nearby_ids = spatial_index.intersects(search_rect)
 
@@ -117,13 +117,19 @@ def dorling_iteration(centroid_dict, neighbours_dict, spatial_index, rmax, frict
                     yattract += factor * dy
         
         # --- Limit repulsion forces ---
-        # Prevent circles from being pushed too far in one step
+        # Limit repulsion to closest neighbor
         repdst = math.hypot(xrepel, yrepel)
         if repdst > closest:
             scale = closest / (repdst + 1e-6)
             xrepel *= scale
             yrepel *= scale
-            repdst = closest
+            # repdst = closest
+
+        # --- Limit attraction forces ---
+        atrdst = math.hypot(xattract, yattract)
+        if repdst > 0.0 and atrdst > 1e-6:
+            xattract = (repdst * xattract) / (atrdst + 1.0)
+            yattract = (repdst * yattract) / (atrdst + 1.0)
 
         # --- Combine forces ---
         # Weighted sum of repulsion and attraction
@@ -131,7 +137,7 @@ def dorling_iteration(centroid_dict, neighbours_dict, spatial_index, rmax, frict
         ytotal = (1.0 - ratio) * yrepel + ratio * yattract
 
         # --- Update motion vectors ---
-        # Smooth motion wirh friction
+        # Smooth motion with friction
         props1['xvec'] = friction * (props1['xvec'] + xtotal)
         props1['yvec'] = friction * (props1['yvec'] + ytotal)
 

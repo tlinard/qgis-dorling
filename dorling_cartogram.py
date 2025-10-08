@@ -179,43 +179,80 @@ class DorlingCartogram:
         self.first_start = True
 
     def get_selected_layer_and_field(self):
+        """
+        Returns the currently selected polygon layer and numeric field.
+
+        This method reads the selected items from the layer and field combo boxes.
+        It checks if a valid polygon layer is selected, and returns both the layer object
+        and the name of the selected numeric attribute field.
+        """
+
+        # Get the selected layer index and field name from the combo boxes
         layer_index = self.dlg.comboBoxLayer.currentIndex()
         field_name = self.dlg.comboBoxField.currentText()
 
+        # Validate the index (check if it's within bounds)
         if layer_index < 0 or layer_index >= len(self.layer_list):
-            return None, None
+            return None, None # Return nothing if no valid layer is selected
 
+        # Get the corresponding layer object from the list
         selected_layer = self.layer_list[layer_index]
         return selected_layer, field_name
     
     def populate_layers(self):
+        """
+        Populates the layer selection combo box with all polygon vector layers in the project.
+
+        This method looks through all layers in the QGIS layer tree and keeps only
+        polygon vector layers (ignoring raster or non-polygon vector layers).
+        The names of the valid layers are added to the layer combo box.
+        """
+
+        # Get the list of all nodes in the QGIS project layer tree
         nodes = QgsProject.instance().layerTreeRoot().children()
 
+        # Initialize/reset the internal list of polygon vector layers
         self.layer_list = []
         for node in nodes:
-            if hasattr(node, 'layer'):
+            if hasattr(node, 'layer'): # Make sure the node has a layer object
                 layer = node.layer()
+                # Check if the layer is a vector layer
                 if layer and layer.type() == layer.VectorLayer:
+                    # Check if the geometry type is Polygon
                     geom_type = QgsWkbTypes.geometryType(layer.wkbType())
                     if geom_type == QgsWkbTypes.PolygonGeometry:
                         self.layer_list.append(layer)
 
+        # Update the combo box with the names of valid layers
         self.dlg.comboBoxLayer.clear()
         self.dlg.comboBoxLayer.addItems([layer.name() for layer in self.layer_list])
 
     def populate_fields(self):
+        """
+        Populates the field selection combo box with numeric attributes from the selected layer.
+
+        After the user selects a polygon layer, this method looks at its fields and
+        keeps only numeric ones (Integer, Double, LongLong), which can be used
+        for proportional symbol scaling (e.g., circle radius).
+        """
+        
+        # Get the index of the currently selected layer
         layer_index = self.dlg.comboBoxLayer.currentIndex()
 
+        # Check if the index is valid
         if layer_index < 0 or layer_index >= len(self.layer_list):
             return
 
+        # Get the selected layer object
         selected_layer = self.layer_list[layer_index]
 
+        # Find all numeric fields (Int, Double, LongLong)
         numeric_field_names = []
         for field in selected_layer.fields():
             if field.type() in (QVariant.Int, QVariant.Double, QVariant.LongLong):
                 numeric_field_names.append(field.name())
 
+        # Update the combo box with the names of numeric fields
         self.dlg.comboBoxField.clear()
         self.dlg.comboBoxField.addItems(numeric_field_names)
 
@@ -254,18 +291,23 @@ class DorlingCartogram:
         # See if OK was pressed
         if result:
 
+            # Start timer to measure execution time
             start_time = time.time()
-
+            
+            # Get selected layer and field
             selected_layer, selected_field = self.get_selected_layer_and_field()
 
+            # Get values from dialog
             friction = self.dlg.doubleSpinBoxFriction.value()
             ratio = self.dlg.doubleSpinBoxRatio.value()
             iterations = self.dlg.mQgsSpinBoxIterations.value()
             
+            # If layer and field are selected, start building the Dorling layer
             if selected_layer and selected_field:
-                print(f"Layer: {selected_layer.name()}, Field: {selected_field}", f"Friction: {friction}, Ratio: {ratio}")
+                # Display selected layer, field and parameters
+                print(f"[DorlingCartogram] Layer: {selected_layer.name()}, Field: {selected_field}", f"Friction: {friction}, Ratio: {ratio}, Iterations: {iterations}")
 
-                # check if the selected layer uses a projected CRS
+                # Check if the selected layer uses a projected CRS
                 if selected_layer.crs().isGeographic():
                     QMessageBox.warning(
                         self.dlg,
@@ -280,10 +322,13 @@ class DorlingCartogram:
                 # Compute Dorling
                 compute_dorling(centroid_dict, neighbours_dict, friction, ratio, iterations)
 
-                # Build layer
+                # Build layer and style layer
                 dorling_layer = create_point_layer(selected_layer, centroid_dict)
                 style_layer(dorling_layer)
+
+                # Add layer to map
                 QgsProject.instance().addMapLayer(dorling_layer)
 
+                # End timer and display execution time
                 end_time = time.time()
                 print(f"[DorlingCartogram] Total completed in {end_time - start_time:.2f} seconds")

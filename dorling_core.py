@@ -14,13 +14,13 @@ from math import hypot
 
 from qgis.core import QgsSpatialIndex, QgsRectangle, QgsFeature, QgsGeometry, QgsPointXY
 
-def compute_dorling(centroid_dict, neighbours_dict,friction = 0.25, ratio = 0.4):
+def compute_dorling(centroid_dict, neighbours_dict,friction = 0.25, ratio = 0.4, iterations = 200):
 
     start_time = time.time()
 
     rmax = max(props['radius_scaled'] for props in centroid_dict.values())
     
-    for i in range (500):
+    for i in range (iterations):
         spatial_index = create_spatial_index(centroid_dict)
         dorling_iteration(centroid_dict, neighbours_dict, spatial_index, rmax, friction, ratio)
 

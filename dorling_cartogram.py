@@ -243,8 +243,9 @@ class DorlingCartogram:
         self.populate_fields()
 
         # Set default values for friction and ratio
-        self.dlg.doubleSpinBoxFriction.setValue(0.25)
-        self.dlg.doubleSpinBoxRatio.setValue(0.4)
+        # self.dlg.doubleSpinBoxFriction.setValue(0.25)
+        # self.dlg.doubleSpinBoxRatio.setValue(0.4)
+        # self.dlg.mQgsSpinBoxIterations.setValue(200)
 
         # show the dialog
         self.dlg.show()
@@ -259,6 +260,7 @@ class DorlingCartogram:
 
             friction = self.dlg.doubleSpinBoxFriction.value()
             ratio = self.dlg.doubleSpinBoxRatio.value()
+            iterations = self.dlg.mQgsSpinBoxIterations.value()
             
             if selected_layer and selected_field:
                 print(f"Layer: {selected_layer.name()}, Field: {selected_field}", f"Friction: {friction}, Ratio: {ratio}")
@@ -276,7 +278,7 @@ class DorlingCartogram:
                 centroid_dict, neighbours_dict = preprocessing(selected_layer, selected_field)
 
                 # Compute Dorling
-                compute_dorling(centroid_dict, neighbours_dict, friction, ratio)
+                compute_dorling(centroid_dict, neighbours_dict, friction, ratio, iterations)
 
                 # Build layer
                 dorling_layer = create_point_layer(selected_layer, centroid_dict)

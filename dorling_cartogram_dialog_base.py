@@ -38,11 +38,11 @@ class Ui_Dialog(object):
         self.label_2.setGeometry(QtCore.QRect(30, 80, 61, 16))
         self.label_2.setObjectName("label_2")
         self.mQgsFileWidgetOutput = QgsFileWidget(Dialog)
-        self.mQgsFileWidgetOutput.setGeometry(QtCore.QRect(130, 220, 341, 27))
+        self.mQgsFileWidgetOutput.setGeometry(QtCore.QRect(140, 230, 341, 27))
         self.mQgsFileWidgetOutput.setStorageMode(QgsFileWidget.SaveFile)
         self.mQgsFileWidgetOutput.setObjectName("mQgsFileWidgetOutput")
         self.label_3 = QtWidgets.QLabel(Dialog)
-        self.label_3.setGeometry(QtCore.QRect(20, 220, 101, 16))
+        self.label_3.setGeometry(QtCore.QRect(20, 240, 101, 16))
         self.label_3.setObjectName("label_3")
         self.label_4 = QtWidgets.QLabel(Dialog)
         self.label_4.setGeometry(QtCore.QRect(30, 120, 61, 16))
@@ -62,6 +62,15 @@ class Ui_Dialog(object):
         self.doubleSpinBoxRatio.setSingleStep(0.01)
         self.doubleSpinBoxRatio.setProperty("value", 0.4)
         self.doubleSpinBoxRatio.setObjectName("doubleSpinBoxRatio")
+        self.label_6 = QtWidgets.QLabel(Dialog)
+        self.label_6.setGeometry(QtCore.QRect(30, 200, 131, 16))
+        self.label_6.setObjectName("label_6")
+        self.mQgsSpinBoxIterations = QgsSpinBox(Dialog)
+        self.mQgsSpinBoxIterations.setGeometry(QtCore.QRect(180, 200, 90, 27))
+        self.mQgsSpinBoxIterations.setMinimum(1)
+        self.mQgsSpinBoxIterations.setMaximum(10000)
+        self.mQgsSpinBoxIterations.setProperty("value", 200)
+        self.mQgsSpinBoxIterations.setObjectName("mQgsSpinBoxIterations")
 
         self.retranslateUi(Dialog)
         self.PushButtonOk.clicked.connect(Dialog.accept) # type: ignore
@@ -78,4 +87,6 @@ class Ui_Dialog(object):
         self.label_3.setText(_translate("Dialog", "Output Layer"))
         self.label_4.setText(_translate("Dialog", "Friction"))
         self.label_5.setText(_translate("Dialog", "Ratio (Attraction %)"))
+        self.label_6.setText(_translate("Dialog", "Iterations"))
 from qgsfilewidget import QgsFileWidget
+from qgsspinbox import QgsSpinBox

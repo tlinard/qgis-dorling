@@ -33,27 +33,33 @@ def create_point_layer(input_layer, centroid_dict, layer_name="dorling"):
     provider.addAttributes(fields)
     point_layer.updateFields()
 
-    # --- Build feature list ---
+    # --- Build features from centroids ---
+
+    # Map original features by ID for quick lookup
     input_feat_dict = {feat.id(): feat for feat in input_layer.getFeatures()}
 
     features = []
     for fid, props in centroid_dict.items():
+        # Skip if the feature ID is not in the original input layer
         if fid not in input_feat_dict:
             continue
-
+        
+        # Extract centroid position and additional values
         x = props['x']
         y = props['y']
         radius_scaled = props['radius_scaled']
         xvec = props['xvec']
         yvec = props['yvec']
 
+        # Retrieve original feature and its attributes
         orig_feat = input_feat_dict[fid]
         orig_attrs = orig_feat.attributes()
 
+        # Create a new point feature at the centroid position
         new_feat = QgsFeature()
         new_feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
 
-        # Combine original attributes + Dorling fields
+        # Combine original attributes and Dorling fields
         new_attrs = orig_attrs + [radius_scaled, xvec, yvec]
         new_feat.setAttributes(new_attrs)
 

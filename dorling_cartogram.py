@@ -235,7 +235,7 @@ class DorlingCartogram:
         keeps only numeric ones (Integer, Double, LongLong), which can be used
         for proportional symbol scaling (e.g., circle radius).
         """
-        
+
         # Get the index of the currently selected layer
         layer_index = self.dlg.comboBoxLayer.currentIndex()
 
@@ -276,6 +276,7 @@ class DorlingCartogram:
             self.dlg = DorlingCartogramDialog()
             self.dlg.comboBoxLayer.currentIndexChanged.connect(self.populate_fields)
 
+        # Populate the layer and field combo boxes
         self.populate_layers()
         self.populate_fields()
 
@@ -286,8 +287,10 @@ class DorlingCartogram:
 
         # show the dialog
         self.dlg.show()
+        
         # Run the dialog event loop
         result = self.dlg.exec_()
+
         # See if OK was pressed
         if result:
 

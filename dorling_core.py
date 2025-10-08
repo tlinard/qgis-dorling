@@ -15,17 +15,36 @@ from math import hypot
 from qgis.core import QgsSpatialIndex, QgsRectangle, QgsFeature, QgsGeometry, QgsPointXY
 
 def compute_dorling(centroid_dict, neighbours_dict,friction = 0.25, ratio = 0.4, iterations = 200):
+    """
+    Run multiple iterations of the Dorling cartogram algorithm.
 
+    Args:
+        centroid_dict (dict): Dictionary of centroids with their current coordinates, radii, and motion vectors.
+        neighbours_dict (dict): Dictionary of neighbors with shared border lengths for attraction forces.
+        friction (float): Damping factor applied to motion vectors.
+        ratio (float): Balance between repulsion and attraction forces (0 = only repulsion, 1 = only attraction).
+        iterations (int): Number of iterations to run.
+    """
+
+    # Start the timer to measure execution time
     start_time = time.time()
 
+    # Compute the maximum radius among all scaled circles.
+    # This is used to define the search window size in the spatial index.
     rmax = max(props['radius_scaled'] for props in centroid_dict.values())
     
+    # Perform the algorithm for a fixed number of iterations
     for i in range (iterations):
+        # Rebuild the spatial index with current positions
         spatial_index = create_spatial_index(centroid_dict)
+
+        # Run one iteration of the Dorling algorithm
         dorling_iteration(centroid_dict, neighbours_dict, spatial_index, rmax, friction, ratio)
 
+    # End the timer and display the execution time
     end_time = time.time()
     print(f"[DorlingCartogram] Dorling iterations completed in {end_time - start_time:.2f} seconds")
+    
     return
 
 def dorling_iteration(centroid_dict, neighbours_dict, spatial_index, rmax, friction = 0.25, ratio = 0.4):
@@ -182,11 +201,18 @@ def circles_overlap(x1, y1, r1, x2, y2, r2):
         overlap (float): Amount of overlap between the circles.
     """
 
+    # Compute horizontal and vertical distance between centers
     dx = x2 - x1
     dy = y2 - y1
 
+    # Compute Euclidean distance between the circle centers
     dist = math.hypot(dx, dy)
+
+    # Compute the overlap between the two circles
+    # Positive => overlapping, 0 => touching, negative => separated
     overlap = r1 + r2 - dist
+
+    # Return all values
     return dx, dy, dist, overlap
 
 def create_spatial_index(centroid_dict):
@@ -198,15 +224,24 @@ def create_spatial_index(centroid_dict):
             { fid: { 'x': x, 'y': y, 'perimeter': perimeter, 'radius_raw': r_raw, 'radius_scaled': r_scaled, 'xvec': xvec, 'yvec': yvec } }
 
     Returns:
-        QgsSpatialIndex
+        QgsSpatialIndex: An index to allow fast spatial queries
     """
+
+    # Initialize an empty spatial index
     index = QgsSpatialIndex()
 
+    # Iterate over each centroid and add it to the spatial index
     for fid, props in centroid_dict.items():
+        # Create a geometry point from the centroid coordinates
         point_geom = QgsGeometry.fromPointXY(QgsPointXY(props['x'], props['y']))
+
+        # Create a new feature and assign it the geometry
         feature = QgsFeature()
         feature.setGeometry(point_geom)
         feature.setId(fid)
+
+        # Insert the feature into the spatial index
         index.insertFeature(feature)
 
+    # Return the constructed spatial index
     return index

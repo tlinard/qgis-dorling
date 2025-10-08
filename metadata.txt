@@ -8,7 +8,7 @@ qgisMinimumVersion=3.0
 description=Plugin for creating Dorling cartograms
 version=0.1
 author=Tanguy Linard
-email=tanguy.linard@hotmail.com
+email=tanguy.linard@unil.ch
 
 about=Plugin for creating Dorling cartograms
 

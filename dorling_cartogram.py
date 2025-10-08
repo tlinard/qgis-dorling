@@ -243,9 +243,9 @@ class DorlingCartogram:
         self.populate_fields()
 
         # Set default values for friction and ratio
-        # self.dlg.doubleSpinBoxFriction.setValue(0.25)
-        # self.dlg.doubleSpinBoxRatio.setValue(0.4)
-        # self.dlg.mQgsSpinBoxIterations.setValue(200)
+        self.dlg.doubleSpinBoxFriction.setValue(0.25)
+        self.dlg.doubleSpinBoxRatio.setValue(0.4)
+        self.dlg.mQgsSpinBoxIterations.setValue(200)
 
         # show the dialog
         self.dlg.show()

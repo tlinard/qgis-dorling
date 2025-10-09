@@ -32,18 +32,27 @@ def compute_dorling(centroid_dict, neighbours_dict,friction = 0.25, ratio = 0.4,
     # Compute the maximum radius among all scaled circles.
     # This is used to define the search window size in the spatial index.
     rmax = max(props['radius_scaled'] for props in centroid_dict.values())
+
+    displacements = {}
     
     # Perform the algorithm for a fixed number of iterations
-    for i in range (iterations):
+    for i in range (1, iterations + 1):
         # Rebuild the spatial index with current positions
         spatial_index = create_spatial_index(centroid_dict)
 
         # Run one iteration of the Dorling algorithm
-        dorling_iteration(centroid_dict, neighbours_dict, spatial_index, rmax, friction, ratio)
+        total_displacement = dorling_iteration(centroid_dict, neighbours_dict, spatial_index, rmax, friction, ratio)
+
+        # Store the total displacement for every 10 iteration
+        if i % 10 == 0:
+            displacements[i] = round(total_displacement)
 
     # End the timer and display the execution time
     end_time = time.time()
     print(f"[DorlingCartogram] Dorling iterations completed in {end_time - start_time:.2f} seconds")
+
+    # Print the displacements for every 10 iteration
+    print(f"[DorlingCartogram] Displacements (iteration: displacement): {displacements}")
     
     return
 
@@ -173,9 +182,7 @@ def dorling_iteration(centroid_dict, neighbours_dict, spatial_index, rmax, frict
         props['x'] += dx
         props['y'] += dy
 
-    print(f"{total_displacement:.2f}")
-
-    return
+    return total_displacement
 
 def circles_overlap(x1, y1, r1, x2, y2, r2):
     """

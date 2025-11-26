@@ -326,7 +326,8 @@ class DorlingCartogram:
                 compute_dorling(centroid_dict, neighbours_dict, friction, ratio, iterations)
 
                 # Build layer and style layer
-                dorling_layer = create_point_layer(selected_layer, centroid_dict)
+                layer_name = f"{selected_layer.name()}_{selected_field}_dorling"
+                dorling_layer = create_point_layer(selected_layer, centroid_dict, layer_name)
                 style_layer(dorling_layer)
 
                 # Add layer to map

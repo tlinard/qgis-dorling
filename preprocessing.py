@@ -216,5 +216,5 @@ def compute_scale_factor(centroid_dict, neighbours_dict):
     if tradius == 0:
         return 1.0
 
-     # Return the scaling factor: average distance divided by average raw radius
+    # Return the scaling factor: average distance divided by average raw radius
     return tdist / tradius

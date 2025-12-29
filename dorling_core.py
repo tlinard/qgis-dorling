@@ -10,8 +10,6 @@
 import math
 import time
 
-from math import hypot
-
 from qgis.core import QgsSpatialIndex, QgsRectangle, QgsFeature, QgsGeometry, QgsPointXY
 
 def compute_dorling(centroid_dict, neighbours_dict,friction = 0.25, ratio = 0.4, iterations = 200):

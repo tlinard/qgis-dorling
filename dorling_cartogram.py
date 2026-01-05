@@ -171,7 +171,7 @@ class DorlingCartogram:
         icon_path = os.path.join(os.path.dirname(__file__), 'icon.png')
         self.add_action(
             icon_path,
-            text=self.tr(u'Compute Dorling cartogram'),
+            text=self.tr(u'Compute circular cartogram'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
